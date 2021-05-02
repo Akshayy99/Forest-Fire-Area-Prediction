@@ -1,0 +1,74 @@
+//var srtm =ee.Image("USGS/SRTMGL1_003")
+
+
+var srtm=ee.ImageCollection("GRIDMET/DROUGHT");
+
+
+
+
+
+var Start=ee.Date('1992-01-17');
+  var End=ee.Date('2015-03-19');
+var filtered = srtm.filterDate(Start,End)
+
+// Apply an algorithm to an image.
+//var elev = ee.Terrain.elev(srtm);
+
+var scale = 4000;
+var table = ee.FeatureCollection('users/Disaster/virginia_cleaned2');
+// Filter to get only larger continental US watersheds.
+
+
+// Check the number of watersheds after filtering for size and location.
+var count = 0;
+
+//while (count<5){
+  var filtered_table = table.filter(ee.Filter.gt('KeyId', (5000*count) -1));
+  filtered_table = filtered_table.filter(ee.Filter.lt('KeyId', 5000+(5000*count)));
+  print(filtered_table.rows);
+  var pts = ee.FeatureCollection(filtered_table);
+  
+
+ 
+  print(pts.first());
+print(filtered_table.size())
+function bufferPoints(radius, bounds) 
+{
+  return function(pt)   
+  {
+    pt = ee.Feature(pt);
+    
+    return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
+  };
+}
+
+var pts_buffers = pts.map(bufferPoints(1000, true));
+
+var meanDrought = filtered.reduce(ee.Reducer.mean());
+print(meanDrought)
+
+var NBR = filtered.map(
+    function(filtered) {
+         return filtered.normalizedDifference(['pdsi','z'])
+                  .rename('NBR')
+                  .copyProperties(filtered, ['system:time_start']); 
+    });
+    var options = { 
+  title: 'NBR',
+  hAxis: {title: 'Date'},
+  vAxis: {title: 'Value'},
+  lineWidth: 1,
+  series: {
+    0: {color: 'FF0000'}, // NBR
+}};
+var featureCollection1 = ee.FeatureCollection([pts.first()]);
+print(ui.Chart.image.series(NBR, featureCollection1, ee.Reducer.mean(), 10).setOptions(options));   
+
+
+
+// Add reducer output to the Buffer Features in the collection.
+
+  
+//}
+
+

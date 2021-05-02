@@ -1,0 +1,141 @@
+Mirza & Almir (2019)  
+
+GIS in airports solutions & applications ,ESRI North East Africa, Dec 2017
+
+http://www.airportfreak.yolasite.com/airport-control.php
+KLAS ,https://www.esri.com/en-us/lg/industry/transportation/location-strategy-gets-first-class-seating?rmedium=www_esri_com_EtoF&rsource=https%3A%2F%2Fwww.esri.com%2Fen-us%2Findustries%2Ftransportation%2Fsegments%2Fairports-aviation%2Flas-vegas-mccarran-airport-case-study
+https://www.gpsworld.com/a-new-era-begins-with-geospatially-based-aviation/
+
+
+Mirza & Almir (2019) studied geospatial aspects of aiport using open-source GIS for Sarajevo 
+International Airport. They outlined areas of interest with respect to The European Organization for the Safety of Air Navigation (EUROCONTROL),
+which is the European equivalent of the NextGen Initiative.
+
+
+Get SRTM
+Get Scale
+Get Slope
+https://developers.google.com/earth-engine/tutorials/tutorial_api_03#code-editor-javascript_3
+
+Import points https://developers.google.com/earth-engine/guides/asset_manager#importing-assets-to-your-script
+Visualize points
+
+Filter table
+https://developers.google.com/earth-engine/guides/feature_collection_filtering
+
+Get Buffers circle/square for given points
+Visualize Buffers
+
+Get mean,max,min elevation for each buffer ,mean slope for each buffer
+https://developers.google.com/earth-engine/guides/reducers_reduce_regions
+
+*************************************************
+
+// Load the SRTM image. 30 meter 1 Arc Sec
+var srtm =ee.Image("USGS/SRTMGL1_003")
+
+// Apply an algorithm to an image.
+//var elev = ee.Terrain.elev(srtm);
+
+var scale = srtm.projection().nominalScale();
+print('SRTM scale in meters', scale);
+
+
+// Filter to get only larger continental US watersheds.
+var filtered_table = table.filter(ee.Filter.lt('OBJECTID', 5000));
+
+// Check the number of watersheds after filtering for size and location.
+print('Count after filtering by size:', filtered_table.size());
+
+var pts = ee.FeatureCollection(filtered_table);
+
+function bufferPoints(radius, bounds) 
+{
+  return function(pt) 
+  {
+    pt = ee.Feature(pt);
+    return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
+  };
+}
+
+var pts_buffers = pts.map(bufferPoints(1000, true));
+Map.setCenter(-79.15,37.33, 10); //Set the center at Virginia
+Map.addLayer(pts_buffers, {color: '006600', strokeWidth: 2}, 'Virginia Forest Fires');//Display 1KM buffers
+Map.addLayer(pts, {color: 'FF0000'}, 'Virginia Forest Fires');
+
+// Add reducer output to the Buffer Features in the collection.
+var meanElevations = srtm.reduceRegions({
+  collection: pts_buffers,
+  reducer: ee.Reducer.max(),
+  scale: scale,
+});
+
+
+// Print the first feature, to illustrate the result.
+
+
+print(ee.Feature(meanElevations.first()));
+
+// Apply Slope algorithm to an image.
+var slope = ee.Terrain.slope(srtm);
+// Add reducer output to the Buffer Features in the collection.
+var meanSlope = slope.reduceRegions({
+  collection: pts_buffers,
+  reducer: ee.Reducer.mean(),
+  scale: scale,
+});
+
+print(ee.Feature(meanSlope.first()));
+
+**************************************************************
+//Get min,max and mean of elevation with single reducer
+//https://gis.stackexchange.com/questions/354544/multiple-reducers-google-earth-engine#:~:text=1%20Answer&text=combine%20always%20combines%20two%20reducers,var%20reducers%20%3D%20ee.
+var reducers_elev = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.min(),
+  sharedInputs: true
+}).combine({
+  reducer2: ee.Reducer.max(),
+  sharedInputs: true
+});
+var elevStatistics = srtm.reduceRegions({
+  collection: pts_buffers,
+  reducer:reducers_elev,
+  scale: scale,
+});
+print(ee.Feature(elevStatistics.first()));
+**************************************************************
+
+
+1. How GEE save data to CSV (Comment map display, remove table filter -sets of 5K)
+2. GRIDMET weather parameters for each square box month or fortnight prior to fire date( For each row)
+3. NDVI for each square box month or fortnight prior to fire date( For each row)
+
+
+
+
+
+
+
+
+3525 
+min: 478
+max: 796
+mean: 619.4523593374886
+
+
+
+-82.63564272694788,37.14044879234726
+-82.61321095139957,37.14044879234726
+-82.61321095139957,37.158443066468195
+-82.63564272694788,37.158443066468195
+-82.63564272694788,37.14044879234726
+
+
+
+
+
+
+
+
+
+
